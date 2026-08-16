@@ -684,9 +684,11 @@ setInterval(heartbeat, 4000);
 
 switchTab('login');
 var saved = localStorage.getItem(SESSION_KEY);
-if (saved) {
-  var existing = byUsername(saved);
-  if (existing) enterApp(existing);
+var existing = saved ? byUsername(saved) : null;
+if (existing) {
+  enterApp(existing);
+} else {
+  $auth.classList.remove('hidden');
 }
 })();
 </script>
