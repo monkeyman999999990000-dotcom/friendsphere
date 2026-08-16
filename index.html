@@ -280,7 +280,10 @@ function avatarHTML(u, small) {
   var size = small ? 26 : 52;
   var font = small ? 22 : 28;
   var col = avatarColor(u.username);
-  return '<div class="avatar" style="width:' + size + 'px;height:' + size + 'px;font-size:' + font + 'px;background:' + col + '33;border:1px solid ' + col + '66;">' + esc(u.avatar || '😀') + '</div>';
+  var content = u.avatarImg
+    ? '<img src="' + esc(u.avatarImg) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">'
+    : esc(u.avatar || '😀');
+  return '<div class="avatar" style="width:' + size + 'px;height:' + size + 'px;font-size:' + font + 'px;background:' + col + '33;border:1px solid ' + col + '66;overflow:hidden;">' + content + '</div>';
 }
 
 function timeAgo(ts) {
@@ -629,6 +632,14 @@ function renderProfile() {
       '<label class="field">Location<input name="location" maxlength="60" value="' + esc(me.location) + '" placeholder="City, country"></label>' +
       '<label class="field">Interests<input name="interests" value="' + esc((me.interests || []).join(', ')) + '" placeholder="gaming, music, hiking"></label>' +
       '<label class="field">Avatar</label>' +
+      '<div style="display:flex;align-items:center;gap:14px;margin-bottom:4px;">' +
+        '<div id="avatar-preview" class="avatar" style="width:64px;height:64px;font-size:34px;background:' + avatarColor(me.username) + '33;border:1px solid ' + avatarColor(me.username) + '66;overflow:hidden;">' + (me.avatarImg ? '<img src="' + esc(me.avatarImg) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;">' : esc(me.avatar)) + '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+          '<button type="button" class="btn accent small" id="upload-avatar">📷 Upload photo</button>' +
+          '<button type="button" class="btn small" id="clear-avatar">Remove photo</button>' +
+          '<input type="file" id="avatar-file" accept="image/*" class="hidden">' +
+        '</div>' +
+      '</div>' +
       '<div class="avatar-grid">' + AVATARS.map(function (a) { return '<button type="button" class="avatar-opt' + (a === me.avatar ? ' selected' : '') + '" data-avatar="' + a + '">' + a + '</button>'; }).join('') + '</div>' +
       '<button type="submit" class="primary">Save profile</button>' +
       '<p id="profile-msg" class="error"></p></form>');
@@ -639,6 +650,41 @@ function renderProfile() {
     chosen = this.dataset.avatar;
     var all = el.querySelectorAll('.avatar-opt');
     for (var k = 0; k < all.length; k++) all[k].classList.toggle('selected', all[k] === this);
+  });
+
+  var fileInput = el.querySelector('#avatar-file');
+  el.querySelector('#upload-avatar').addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function () {
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { alert('Please choose an image file.'); return; }
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      var img = new Image();
+      img.onload = function () {
+        var SIZE = 160;
+        var side = Math.min(img.width, img.height);
+        var canvas = document.createElement('canvas');
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        canvas.getContext('2d').drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, SIZE, SIZE);
+        var imgEl = el.querySelector('#avatar-preview img');
+        if (imgEl) imgEl.src = canvas.toDataURL('image/jpeg', 0.8);
+        state.me.avatarImg = canvas.toDataURL('image/jpeg', 0.8);
+        saveMe();
+        saveUsers();
+        refreshAll();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+    fileInput.value = '';
+  });
+  el.querySelector('#clear-avatar').addEventListener('click', function () {
+    state.me.avatarImg = '';
+    saveMe();
+    saveUsers();
+    refreshAll();
   });
 
   el.querySelector('#profile-form').addEventListener('submit', function (e) {
