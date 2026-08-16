@@ -57,6 +57,13 @@ button.primary:disabled { opacity: 0.6; cursor: default; }
   background: rgba(0,0,0,0.25); border-right: 1px solid var(--card-border);
 }
 .sidebar .logo { font-size: 20px; font-weight: 700; margin-bottom: 28px; display: flex; align-items: center; gap: 8px; }
+.online-banner {
+  display: flex; align-items: center; gap: 8px; margin: -14px 0 16px; padding: 8px 12px;
+  font-size: 13px; color: var(--ok); background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.3); border-radius: 10px;
+}
+.pulse-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 8px var(--ok); animation: pulse 1.8s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
 nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
 .nav-btn {
   display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: none;
@@ -201,6 +208,7 @@ textarea { resize: vertical; min-height: 80px; }
 <div id="app-view" class="hidden">
   <aside class="sidebar">
     <div class="logo"><span>🌐</span>FriendSphere</div>
+    <div id="online-banner" class="online-banner"><span class="pulse-dot"></span><span id="online-count">0</span> online</div>
     <nav>
       <button class="nav-btn active" data-view="discover">🧭 Discover</button>
       <button class="nav-btn" data-view="friends">🤝 Friends<span class="count" id="friends-count"></span></button>
@@ -260,6 +268,15 @@ function refreshPresence() {
   for (var k in state.online) { if (now - state.online[k] > 15000) delete state.online[k]; }
   var me = state.me ? state.me.username : null;
   if (me && state.online[me]) state.online[me] = now;
+  updateOnlineBanner();
+}
+
+function updateOnlineBanner() {
+  var count = 0;
+  var now = Date.now();
+  for (var k in state.online) if (now - state.online[k] < 15000) count++;
+  var el = $('#online-count');
+  if (el) el.textContent = count;
 }
 
 function heartbeat() {
