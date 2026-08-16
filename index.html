@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FriendSphere</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg1: #1a1140; --bg2: #3a1a6e; --accent: #7c5cff; --accent2: #22d3ee;
+  --card: rgba(255,255,255,0.06); --card-border: rgba(255,255,255,0.12);
+  --text: #eef0ff; --muted: #a9b0d6; --danger: #ff5c7a; --ok: #34d399;
+}
+html, body { height: 100%; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: radial-gradient(1200px 800px at 20% -10%, #3a1a6e 0%, var(--bg1) 60%), var(--bg1);
+  min-height: 100vh;
+}
+.hidden { display: none !important; }
+.auth-view { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.auth-card {
+  width: 100%; max-width: 400px; background: var(--card);
+  border: 1px solid var(--card-border); border-radius: 20px; padding: 36px 32px;
+  text-align: center; backdrop-filter: blur(12px); box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.auth-card .logo { font-size: 44px; }
+.auth-card h1 { font-size: 30px; margin: 8px 0 4px; }
+.auth-card .tagline { color: var(--muted); margin-bottom: 24px; font-size: 14px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+.tab {
+  flex: 1; padding: 10px; background: transparent; border: 1px solid var(--card-border);
+  border-radius: 10px; color: var(--muted); font-size: 14px; cursor: pointer; transition: all 0.15s;
+}
+.tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+form { display: flex; flex-direction: column; gap: 12px; }
+input, textarea, select {
+  width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--card-border);
+  background: rgba(255,255,255,0.06); color: var(--text); font-size: 14px; font-family: inherit;
+  outline: none; transition: border-color 0.15s;
+}
+input:focus, textarea:focus { border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.35); }
+button.primary {
+  width: 100%; padding: 12px; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff;
+  font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 0.1s, filter 0.15s;
+}
+button.primary:hover { filter: brightness(1.1); }
+button.primary:active { transform: scale(0.98); }
+button.primary:disabled { opacity: 0.6; cursor: default; }
+.error { color: var(--danger); font-size: 13px; min-height: 18px; margin-top: 12px; }
+#app-view { display: flex; height: 100vh; overflow: hidden; }
+.sidebar {
+  width: 240px; flex-shrink: 0; display: flex; flex-direction: column; padding: 20px 14px;
+  background: rgba(0,0,0,0.25); border-right: 1px solid var(--card-border);
+}
+.sidebar .logo { font-size: 20px; font-weight: 700; margin-bottom: 28px; display: flex; align-items: center; gap: 8px; }
+nav { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+.nav-btn {
+  display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: none;
+  border-radius: 10px; background: transparent; color: var(--muted); font-size: 15px;
+  cursor: pointer; text-align: left; transition: background 0.15s, color 0.15s;
+}
+.nav-btn:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+.nav-btn.active { background: var(--accent); color: #fff; }
+.count {
+  margin-left: auto; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px;
+  background: var(--danger); color: #fff; font-size: 12px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.count:empty { display: none; }
+.me-chip {
+  display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px;
+  background: var(--card); border: 1px solid var(--card-border);
+}
+.me-chip .avatar { font-size: 26px; }
+.me-chip .meta { flex: 1; min-width: 0; }
+.me-chip .name { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.me-chip .sub { font-size: 12px; color: var(--muted); }
+.me-chip button { background: transparent; border: none; color: var(--muted); font-size: 14px; cursor: pointer; padding: 4px; }
+.me-chip button:hover { color: var(--danger); }
+.main { flex: 1; overflow-y: auto; padding: 28px; }
+.view { max-width: 960px; margin: 0 auto; }
+.view h2 { font-size: 24px; margin-bottom: 4px; }
+.view .subtitle { color: var(--muted); margin-bottom: 20px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+.card {
+  background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 20px;
+  display: flex; flex-direction: column; gap: 10px; transition: transform 0.15s, border-color 0.15s;
+}
+.card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.card .row { display: flex; align-items: center; gap: 12px; }
+.avatar {
+  width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 28px; flex-shrink: 0;
+}
+.card .who { flex: 1; min-width: 0; }
+.card .who .name { font-weight: 600; font-size: 16px; display: flex; align-items: center; gap: 6px; }
+.card .who .username { color: var(--muted); font-size: 13px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #666; display: inline-block; }
+.dot.online { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.card .bio { font-size: 13px; color: var(--muted); line-height: 1.4; min-height: 36px; }
+.card .meta-line { font-size: 12px; color: var(--muted); display: flex; gap: 12px; flex-wrap: wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 12px; padding: 3px 10px; border-radius: 999px; background: rgba(124,92,255,0.2); color: #c9c1ff; }
+.btn {
+  padding: 9px 14px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card);
+  color: var(--text); font-size: 13px; cursor: pointer; transition: all 0.15s;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.small { padding: 5px 10px; font-size: 12px; }
+.btn.ok { background: var(--ok); border-color: var(--ok); color: #062; font-weight: 600; }
+.btn.danger { background: var(--danger); border-color: var(--danger); color: #fff; font-weight: 600; }
+.btn.accent { background: linear-gradient(135deg, var(--accent), var(--accent2)); border: none; color: #fff; font-weight: 600; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+#view-friends { display: flex; gap: 20px; max-width: 1100px; height: calc(100vh - 56px); }
+.friends-col {
+  width: 300px; flex-shrink: 0; background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 16px; overflow-y: auto; padding: 10px;
+}
+.friend-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; cursor: pointer; transition: background 0.15s; }
+.friend-row:hover { background: rgba(255,255,255,0.07); }
+.friend-row.active { background: rgba(124,92,255,0.25); }
+.friend-row .avatar { width: 42px; height: 42px; font-size: 22px; }
+.friend-row .name { font-weight: 600; font-size: 14px; }
+.friend-row .sub { font-size: 12px; color: var(--muted); }
+.chat-col { flex: 1; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; }
+.chat-head { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--card-border); }
+.chat-head .avatar { width: 40px; height: 40px; font-size: 20px; }
+.chat-head .who .name { font-weight: 600; }
+.chat-head .who .sub { font-size: 12px; color: var(--muted); }
+.chat-head .spacer { flex: 1; }
+.chat-body { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 8px; }
+.bubble { max-width: 70%; padding: 9px 13px; border-radius: 14px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+.bubble.me { align-self: flex-end; background: var(--accent); border-bottom-right-radius: 4px; }
+.bubble.them { align-self: flex-start; background: rgba(255,255,255,0.1); border-bottom-left-radius: 4px; }
+.bubble .time { display: block; font-size: 10px; opacity: 0.7; margin-top: 3px; }
+.chat-empty { margin: auto; color: var(--muted); text-align: center; font-size: 14px; }
+.chat-input { display: flex; gap: 10px; padding: 14px; border-top: 1px solid var(--card-border); }
+.chat-input input { flex: 1; }
+.chat-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 15px; }
+.req-row {
+  display: flex; align-items: center; gap: 14px; background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 14px; padding: 14px 18px; margin-bottom: 10px;
+}
+.req-row .avatar { width: 46px; height: 46px; font-size: 24px; }
+.req-row .who { flex: 1; min-width: 0; }
+.req-row .who .name { font-weight: 600; }
+.req-row .who .username { color: var(--muted); font-size: 13px; }
+.req-row .actions { display: flex; gap: 8px; }
+.profile-form {
+  max-width: 560px; background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 14px;
+}
+.avatar-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.avatar-opt {
+  width: 46px; height: 46px; border-radius: 12px; border: 2px solid transparent;
+  background: rgba(255,255,255,0.06); font-size: 24px; cursor: pointer; transition: all 0.15s;
+}
+.avatar-opt:hover { background: rgba(255,255,255,0.14); }
+.avatar-opt.selected { border-color: var(--accent2); background: rgba(34,211,238,0.2); }
+label.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--muted); }
+textarea { resize: vertical; min-height: 80px; }
+.empty-state { text-align: center; color: var(--muted); padding: 60px 20px; font-size: 15px; }
+.empty-state .big { font-size: 44px; margin-bottom: 12px; }
+@media (max-width: 820px) {
+  #view-friends { flex-direction: column; height: auto; }
+  .friends-col { width: 100%; max-height: 40vh; }
+  .chat-col { min-height: 50vh; }
+}
+</style>
+</head>
+<body>
+
+<div id="auth-view" class="auth-view hidden">
+  <div class="auth-card">
+    <div class="logo">🌐</div>
+    <h1>FriendSphere</h1>
+    <p class="tagline">Create a profile, meet people, make friends.<br>Saved on this computer.</p>
+    <div class="tabs">
+      <button class="tab active" data-tab="login">Log in</button>
+      <button class="tab" data-tab="signup">Sign up</button>
+    </div>
+    <form id="login-form">
+      <input type="text" name="username" placeholder="Username" autocomplete="username">
+      <input type="password" name="password" placeholder="Password" autocomplete="current-password">
+      <button type="submit" class="primary">Log in</button>
+    </form>
+    <form id="signup-form" class="hidden">
+      <input type="text" name="username" placeholder="Username (3-20 characters)" autocomplete="username">
+      <input type="text" name="displayName" placeholder="Display name" autocomplete="nickname">
+      <input type="password" name="password" placeholder="Password (4+ characters)" autocomplete="new-password">
+      <button type="submit" class="primary">Create account</button>
+    </form>
+    <p id="auth-error" class="error"></p>
+  </div>
+</div>
+
+<div id="app-view" class="hidden">
+  <aside class="sidebar">
+    <div class="logo"><span>🌐</span>FriendSphere</div>
+    <nav>
+      <button class="nav-btn active" data-view="discover">🧭 Discover</button>
+      <button class="nav-btn" data-view="friends">🤝 Friends<span class="count" id="friends-count"></span></button>
+      <button class="nav-btn" data-view="requests">📨 Requests<span class="count" id="requests-count"></span></button>
+      <button class="nav-btn" data-view="profile">👤 Profile</button>
+    </nav>
+    <div id="me-chip" class="me-chip"></div>
+  </aside>
+  <main class="main">
+    <section id="view-discover" class="view"></section>
+    <section id="view-friends" class="view hidden">
+      <div id="friends-col" class="friends-col"></div>
+      <div id="chat-col" class="chat-col hidden"></div>
+    </section>
+    <section id="view-requests" class="view hidden"></section>
+    <section id="view-profile" class="view hidden"></section>
+  </main>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+var USERS_KEY = 'friendsphere_users';
+var MSGS_KEY = 'friendsphere_msgs';
+var SESSION_KEY = 'friendsphere_session';
+var PRESENCE_KEY = 'friendsphere_presence';
+
+var AVATARS = ['😀','😎','🦊','🐱','🐼','🐸','🐙','🦄','🌵','🌻','🍕','🎮','⚽','🎵','🚀','🎨','🌊','🐢','🦋','🥑'];
+var PALETTE = ['#7c5cff','#22d3ee','#f472b6','#34d399','#fbbf24','#f87171','#a78bfa','#60a5fa','#4ade80','#fb923c','#e879f9','#2dd4bf'];
+
+function $(s) { return document.querySelector(s); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+var state = { me: null, users: [], view: 'discover', chatWith: null, messages: {}, online: {} };
+
+function loadUsers() { try { return JSON.parse(localStorage.getItem(USERS_KEY)) || []; } catch (e) { return []; } }
+function saveUsers(u) { localStorage.setItem(USERS_KEY, JSON.stringify(u || loadUsers())); }
+function loadMsgs() { try { return JSON.parse(localStorage.getItem(MSGS_KEY)) || []; } catch (e) { return []; } }
+function saveMsgs() { localStorage.setItem(MSGS_KEY, JSON.stringify(loadMsgs())); }
+function byUsername(username) { var us = loadUsers(); for (var i = 0; i < us.length; i++) if (us[i].username === username) return us[i]; return null; }
+
+function refreshAll() {
+  if (!state.me) return;
+  var me = byUsername(state.me.username);
+  if (!me) { logout(); return; }
+  state.me = me;
+  state.users = loadUsers();
+  refreshPresence();
+  renderShell();
+  renderView();
+}
+
+function refreshPresence() {
+  try { state.online = JSON.parse(localStorage.getItem(PRESENCE_KEY)) || {}; } catch (e) { state.online = {}; }
+  var now = Date.now();
+  for (var k in state.online) { if (now - state.online[k] > 15000) delete state.online[k]; }
+  var me = state.me ? state.me.username : null;
+  if (me && state.online[me]) state.online[me] = now;
+}
+
+function heartbeat() {
+  if (!state.me) return;
+  var p; try { p = JSON.parse(localStorage.getItem(PRESENCE_KEY)) || {}; } catch (e) { p = {}; }
+  p[state.me.username] = Date.now();
+  localStorage.setItem(PRESENCE_KEY, JSON.stringify(p));
+}
+
+function isOnline(username) { return !!(state.online[username] && Date.now() - state.online[username] < 15000); }
+
+function avatarColor(username) {
+  var h = 0; for (var i = 0; i < username.length; i++) h = (h * 31 + username.charCodeAt(i)) | 0;
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
+
+function avatarHTML(u, small) {
+  var size = small ? 26 : 52;
+  var font = small ? 22 : 28;
+  var col = avatarColor(u.username);
+  return '<div class="avatar" style="width:' + size + 'px;height:' + size + 'px;font-size:' + font + 'px;background:' + col + '33;border:1px solid ' + col + '66;">' + esc(u.avatar || '😀') + '</div>';
+}
+
+function timeAgo(ts) {
+  if (!ts) return '';
+  var s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.floor(s / 60) + 'm ago';
+  if (s < 86400) return Math.floor(s / 3600) + 'h ago';
+  return Math.floor(s / 86400) + 'd ago';
+}
+
+function clock(ts) {
+  var d = new Date(ts);
+  return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes();
+}
+
+function relation(me, other) {
+  if (me.username === other.username) return 'me';
+  if ((me.friends || []).indexOf(other.username) !== -1) return 'friends';
+  if ((me.requestsOut || []).indexOf(other.username) !== -1) return 'requested';
+  if ((me.requestsIn || []).indexOf(other.username) !== -1) return 'incoming';
+  return 'none';
+}
+
+function saveMe() {
+  var us = loadUsers();
+  for (var i = 0; i < us.length; i++) if (us[i].username === state.me.username) { us[i] = state.me; break; }
+  saveUsers(us);
+}
+
+/* ---------- Auth ---------- */
+
+var $auth = $('#auth-view');
+var $app = $('#app-view');
+var $authError = $('#auth-error');
+
+function switchTab(tab) {
+  var tabs = document.querySelectorAll('.tab');
+  for (var i = 0; i < tabs.length; i++) tabs[i].classList.toggle('active', tabs[i].dataset.tab === tab);
+  $('#login-form').classList.toggle('hidden', tab !== 'login');
+  $('#signup-form').classList.toggle('hidden', tab !== 'signup');
+  $authError.textContent = '';
+}
+
+var tabs = document.querySelectorAll('.tab');
+for (var i = 0; i < tabs.length; i++) tabs[i].addEventListener('click', function () { switchTab(this.dataset.tab); });
+
+$('#login-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var f = e.target;
+  $authError.textContent = '';
+  var u = byUsername(String(f.username.value).trim().toLowerCase());
+  if (!u || u.password !== f.password.value) { $authError.textContent = 'Wrong username or password.'; return; }
+  enterApp(u);
+});
+
+$('#signup-form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var f = e.target;
+  $authError.textContent = '';
+  var username = String(f.username.value).trim().toLowerCase();
+  var displayName = String(f.displayName.value).trim().slice(0, 24);
+  var password = f.password.value;
+  if (!/^[a-z0-9_]{3,20}$/.test(username)) { $authError.textContent = 'Username must be 3-20 characters (a-z, 0-9, _).'; return; }
+  if (password.length < 4) { $authError.textContent = 'Password must be at least 4 characters.'; return; }
+  if (!displayName) { $authError.textContent = 'Display name is required.'; return; }
+  if (byUsername(username)) { $authError.textContent = 'That username is already taken.'; return; }
+  var user = {
+    username: username, displayName: displayName, password: password, bio: '', age: null,
+    location: '', interests: [], avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
+    friends: [], requestsIn: [], requestsOut: [], created: Date.now()
+  };
+  var us = loadUsers(); us.push(user); saveUsers(us);
+  enterApp(user);
+});
+
+function enterApp(me) {
+  state.me = me;
+  state.messages = {};
+  localStorage.setItem(SESSION_KEY, me.username);
+  $auth.classList.add('hidden');
+  $app.classList.remove('hidden');
+  refreshAll();
+  heartbeat();
+}
+
+function logout() {
+  localStorage.removeItem(SESSION_KEY);
+  state.me = null;
+  state.chatWith = null;
+  state.messages = {};
+  $app.classList.add('hidden');
+  $auth.classList.remove('hidden');
+  switchTab('login');
+}
+
+function renderShell() {
+  var me = state.me;
+  $('#friends-count').textContent = (me.friends || []).length;
+  $('#requests-count').textContent = (me.requestsIn || []).length;
+  $('#me-chip').innerHTML = avatarHTML(me, true) +
+    '<div class="meta"><div class="name">' + esc(me.displayName) + '</div><div class="sub">@' + esc(me.username) + '</div></div>' +
+    '<button id="logout-btn" title="Log out">⏻</button>';
+  $('#logout-btn').addEventListener('click', logout);
+}
+
+/* ---------- Navigation ---------- */
+
+var navBtns = document.querySelectorAll('.nav-btn');
+for (var j = 0; j < navBtns.length; j++) navBtns[j].addEventListener('click', function () {
+  state.view = this.dataset.view;
+  var all = document.querySelectorAll('.nav-btn');
+  for (var k = 0; k < all.length; k++) all[k].classList.toggle('active', all[k] === this);
+  renderView();
+});
+
+function renderView() {
+  var views = ['discover', 'friends', 'requests', 'profile'];
+  for (var i = 0; i < views.length; i++) $('#view-' + views[i]).classList.toggle('hidden', views[i] !== state.view);
+  if (state.view === 'discover') renderDiscover();
+  else if (state.view === 'friends') renderFriends();
+  else if (state.view === 'requests') renderRequests();
+  else renderProfile();
+}
+
+/* ---------- Discover ---------- */
+
+function renderDiscover() {
+  var el = $('#view-discover');
+  var others = state.users.filter(function (u) { return u.username !== state.me.username; });
+  others.sort(function (a, b) { return (isOnline(b.username) ? 1 : 0) - (isOnline(a.username) ? 1 : 0) || a.displayName.localeCompare(b.displayName); });
+  if (!others.length) {
+    el.innerHTML = '<div class="empty-state"><div class="big">🌱</div>No one else is here yet.<br>Make a second account and open this file in another tab to chat!</div>';
+    return;
+  }
+  el.innerHTML = '<h2>Discover</h2><p class="subtitle">People on FriendSphere — say hi and send a request.</p><div class="grid">' +
+    others.map(cardHTML).join('') + '</div>';
+  var btns = el.querySelectorAll('[data-action]');
+  for (var i = 0; i < btns.length; i++) btns[i].addEventListener('click', function () {
+    onAction(this.dataset.action, this.dataset.user, this);
+  });
+}
+
+function cardHTML(u) {
+  var meta = [];
+  if (u.age) meta.push(u.age + ' yo');
+  if (u.location) meta.push('📍 ' + esc(u.location));
+  meta.push(isOnline(u.username) ? 'online' : 'offline');
+  return '<div class="card">' +
+    '<div class="row">' + avatarHTML(u) +
+      '<div class="who"><div class="name">' + esc(u.displayName) + ' <span class="dot ' + (isOnline(u.username) ? 'online' : '') + '"></span></div>' +
+      '<div class="username">@' + esc(u.username) + '</div></div></div>' +
+    '<div class="bio">' + esc(u.bio || 'No bio yet.') + '</div>' +
+    (u.interests && u.interests.length ? '<div class="chips">' + u.interests.map(function (i) { return '<span class="chip">' + esc(i) + '</span>'; }).join('') + '</div>' : '') +
+    '<div class="meta-line">' + meta.join(' · ') + '</div>' +
+    actionButton(u) + '</div>';
+}
+
+function actionButton(u) {
+  var r = relation(state.me, u);
+  if (r === 'friends') return '<button class="btn ok small" data-action="openChat" data-user="' + esc(u.username) + '">💬 Message</button> <button class="btn small" data-action="remove" data-user="' + esc(u.username) + '">Remove</button>';
+  if (r === 'requested') return '<button class="btn small" disabled>⏳ Request sent</button> <button class="btn small" data-action="cancel" data-user="' + esc(u.username) + '">Cancel</button>';
+  if (r === 'incoming') return '<button class="btn ok small" data-action="accept" data-user="' + esc(u.username) + '">✓ Accept</button> <button class="btn small" data-action="decline" data-user="' + esc(u.username) + '">✕</button>';
+  return '<button class="btn accent small" data-action="request" data-user="' + esc(u.username) + '">＋ Add friend</button>';
+}
+
+function onAction(action, username, btn) {
+  var me = state.me;
+  var other = byUsername(username);
+  if (!other) return;
+  if (action === 'request') {
+    if ((me.requestsIn || []).indexOf(other.username) !== -1) {
+      if ((me.friends || []).indexOf(other.username) === -1) me.friends.push(other.username);
+      if ((other.friends || []).indexOf(me.username) === -1) other.friends.push(me.username);
+      me.requestsIn = me.requestsIn.filter(function (x) { return x !== other.username; });
+      other.requestsOut = other.requestsOut.filter(function (x) { return x !== me.username; });
+      saveUsers();
+      refreshAll();
+      return;
+    }
+    if ((me.friends || []).indexOf(other.username) === -1) me.requestsOut.push(other.username);
+    if ((other.requestsIn || []).indexOf(me.username) === -1) other.requestsIn.push(me.username);
+  } else if (action === 'accept') {
+    me.requestsIn = me.requestsIn.filter(function (x) { return x !== other.username; });
+    me.requestsOut = me.requestsOut.filter(function (x) { return x !== other.username; });
+    other.requestsIn = other.requestsIn.filter(function (x) { return x !== me.username; });
+    other.requestsOut = other.requestsOut.filter(function (x) { return x !== me.username; });
+    if ((me.friends || []).indexOf(other.username) === -1) me.friends.push(other.username);
+    if ((other.friends || []).indexOf(me.username) === -1) other.friends.push(me.username);
+  } else if (action === 'decline') {
+    me.requestsIn = me.requestsIn.filter(function (x) { return x !== other.username; });
+    other.requestsOut = other.requestsOut.filter(function (x) { return x !== me.username; });
+  } else if (action === 'cancel') {
+    me.requestsOut = me.requestsOut.filter(function (x) { return x !== other.username; });
+    other.requestsIn = other.requestsIn.filter(function (x) { return x !== me.username; });
+  } else if (action === 'remove') {
+    me.friends = me.friends.filter(function (x) { return x !== other.username; });
+    other.friends = other.friends.filter(function (x) { return x !== me.username; });
+    me.requestsIn = me.requestsIn.filter(function (x) { return x !== other.username; });
+    me.requestsOut = me.requestsOut.filter(function (x) { return x !== other.username; });
+    other.requestsIn = other.requestsIn.filter(function (x) { return x !== me.username; });
+    other.requestsOut = other.requestsOut.filter(function (x) { return x !== me.username; });
+    if (state.chatWith === other.username) state.chatWith = null;
+  } else if (action === 'openChat') {
+    openChat(other.username);
+    return;
+  }
+  saveUsers();
+  refreshAll();
+}
+
+/* ---------- Friends + chat ---------- */
+
+function renderFriends() {
+  var col = $('#friends-col');
+  var friends = state.users.filter(function (u) { return u.username !== state.me.username && (state.me.friends || []).indexOf(u.username) !== -1; });
+  friends.sort(function (a, b) { return (isOnline(b.username) ? 1 : 0) - (isOnline(a.username) ? 1 : 0) || a.displayName.localeCompare(b.displayName); });
+
+  if (!friends.length) {
+    col.innerHTML = '<div class="empty-state"><div class="big">🤝</div>No friends yet.<br>Go to <b>Discover</b> and send a request!</div>';
+  } else {
+    col.innerHTML = friends.map(function (u) {
+      return '<div class="friend-row' + (state.chatWith === u.username ? ' active' : '') + '" data-user="' + esc(u.username) + '">' +
+        avatarHTML(u, true) +
+        '<div><div class="name">' + esc(u.displayName) + '</div>' +
+        '<div class="sub">' + (isOnline(u.username) ? '<span style="color:var(--ok)">online</span>' : 'offline') + '</div></div></div>';
+    }).join('');
+    var rows = col.querySelectorAll('.friend-row');
+    for (var i = 0; i < rows.length; i++) rows[i].addEventListener('click', function () { openChat(this.dataset.user); });
+  }
+
+  var chat = $('#chat-col');
+  var stillFriend = friends.some(function (f) { return f.username === state.chatWith; });
+  if (state.chatWith && stillFriend) renderChat();
+  else { state.chatWith = null; chat.classList.add('hidden'); }
+}
+
+function openChat(username) {
+  state.chatWith = username;
+  state.view = 'friends';
+  var all = document.querySelectorAll('.nav-btn');
+  for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i].dataset.view === 'friends');
+  refreshAll();
+}
+
+function renderChat() {
+  var chat = $('#chat-col');
+  chat.classList.remove('hidden');
+  var friend = byUsername(state.chatWith);
+  if (!friend) return;
+  var history = state.messages[friend.username] || [];
+  if (!history.length) {
+    history = loadMsgs().filter(function (m) {
+      return (m.from === state.me.username && m.to === friend.username) || (m.from === friend.username && m.to === state.me.username);
+    });
+    state.messages[friend.username] = history;
+  }
+
+  chat.innerHTML =
+    '<div class="chat-head">' + avatarHTML(friend, true) +
+      '<div class="who"><div class="name">' + esc(friend.displayName) + '</div>' +
+      '<div class="sub">' + (isOnline(friend.username) ? 'online' : 'offline') + '</div></div>' +
+      '<div class="spacer"></div>' +
+      '<button class="btn danger small" id="chat-remove">Remove</button></div>' +
+    '<div class="chat-body">' + (history.length ? history.map(bubbleHTML).join('') : '<div class="chat-empty">No messages yet — say hi! 👋</div>') + '</div>' +
+    '<form class="chat-input" id="chat-form"><input type="text" placeholder="Type a message..." autocomplete="off"><button class="btn accent" type="submit">Send</button></form>';
+
+  var body = chat.querySelector('.chat-body');
+  body.scrollTop = body.scrollHeight;
+
+  chat.querySelector('#chat-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var input = e.target.querySelector('input');
+    var text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    var msgs = loadMsgs();
+    msgs.push({ from: state.me.username, to: state.chatWith, text: text, time: Date.now() });
+    localStorage.setItem(MSGS_KEY, JSON.stringify(msgs));
+    refreshAll();
+  });
+
+  chat.querySelector('#chat-remove').addEventListener('click', function () {
+    onAction('remove', friend.username, null);
+  });
+}
+
+function bubbleHTML(m) {
+  var mine = m.from === state.me.username;
+  return '<div class="bubble ' + (mine ? 'me' : 'them') + '">' + esc(m.text) + '<span class="time">' + clock(m.time) + '</span></div>';
+}
+
+/* ---------- Requests ---------- */
+
+function renderRequests() {
+  var el = $('#view-requests');
+  var me = state.me;
+  var incoming = state.users.filter(function (u) { return (me.requestsIn || []).indexOf(u.username) !== -1; });
+  var outgoing = state.users.filter(function (u) { return (me.requestsOut || []).indexOf(u.username) !== -1; });
+
+  el.innerHTML = '<h2>Requests</h2><p class="subtitle">Friend requests you received and sent.</p>';
+
+  if (!incoming.length && !outgoing.length) {
+    el.insertAdjacentHTML('beforeend', '<div class="empty-state"><div class="big">📭</div>No requests right now.</div>');
+    return;
+  }
+  if (incoming.length) {
+    el.insertAdjacentHTML('beforeend', '<h3 style="margin-bottom:10px">Incoming</h3>' + incoming.map(function (u) { return reqRow(u, false); }).join(''));
+    bindReqButtons(el);
+  }
+  if (outgoing.length) {
+    el.insertAdjacentHTML('beforeend', '<h3 style="margin:20px 0 10px">Sent</h3>' + outgoing.map(function (u) { return reqRow(u, true); }).join(''));
+    bindReqButtons(el);
+  }
+}
+
+function bindReqButtons(el) {
+  var btns = el.querySelectorAll('[data-action]');
+  for (var i = 0; i < btns.length; i++) btns[i].addEventListener('click', function () {
+    onAction(this.dataset.action, this.dataset.user, this);
+  });
+}
+
+function reqRow(u, sent) {
+  var actions = sent
+    ? '<button class="btn small" data-action="cancel" data-user="' + esc(u.username) + '">Cancel</button>'
+    : '<button class="btn ok small" data-action="accept" data-user="' + esc(u.username) + '">Accept</button>' +
+      '<button class="btn small" data-action="decline" data-user="' + esc(u.username) + '">Decline</button>';
+  return '<div class="req-row">' + avatarHTML(u) +
+    '<div class="who"><div class="name">' + esc(u.displayName) + ' <span class="dot ' + (isOnline(u.username) ? 'online' : '') + '"></span></div>' +
+    '<div class="username">@' + esc(u.username) + (u.bio ? ' — ' + esc(u.bio) : '') + '</div></div>' +
+    '<div class="actions">' + actions + '</div></div>';
+}
+
+/* ---------- Profile ---------- */
+
+function renderProfile() {
+  var me = state.me;
+  var el = $('#view-profile');
+  el.innerHTML = '<h2>Your profile</h2><p class="subtitle">This is what other people see.</p>';
+  el.insertAdjacentHTML('beforeend',
+    '<form class="profile-form" id="profile-form">' +
+      '<label class="field">Display name<input name="displayName" value="' + esc(me.displayName) + '" maxlength="24"></label>' +
+      '<label class="field">Bio<textarea name="bio" maxlength="300" placeholder="Tell people about yourself...">' + esc(me.bio) + '</textarea></label>' +
+      '<label class="field">Age<input name="age" type="number" min="13" max="120" value="' + (me.age == null ? '' : me.age) + '" placeholder="Optional"></label>' +
+      '<label class="field">Location<input name="location" maxlength="60" value="' + esc(me.location) + '" placeholder="City, country"></label>' +
+      '<label class="field">Interests<input name="interests" value="' + esc((me.interests || []).join(', ')) + '" placeholder="gaming, music, hiking"></label>' +
+      '<label class="field">Avatar</label>' +
+      '<div class="avatar-grid">' + AVATARS.map(function (a) { return '<button type="button" class="avatar-opt' + (a === me.avatar ? ' selected' : '') + '" data-avatar="' + a + '">' + a + '</button>'; }).join('') + '</div>' +
+      '<button type="submit" class="primary">Save profile</button>' +
+      '<p id="profile-msg" class="error"></p></form>');
+
+  var chosen = me.avatar;
+  var opts = el.querySelectorAll('.avatar-opt');
+  for (var i = 0; i < opts.length; i++) opts[i].addEventListener('click', function () {
+    chosen = this.dataset.avatar;
+    var all = el.querySelectorAll('.avatar-opt');
+    for (var k = 0; k < all.length; k++) all[k].classList.toggle('selected', all[k] === this);
+  });
+
+  el.querySelector('#profile-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var f = e.target;
+    var msgEl = $('#profile-msg');
+    msgEl.textContent = '';
+    var ageRaw = Number(f.age.value);
+    var interests = f.interests.value.split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+    var dupes = [];
+    for (var i2 = 0; i2 < interests.length; i2++) if (dupes.indexOf(interests[i2]) === -1) dupes.push(interests[i2]);
+    interests = dupes.slice(0, 10);
+    state.me.displayName = String(f.displayName.value).trim().slice(0, 24) || state.me.displayName;
+    state.me.bio = String(f.bio.value).trim().slice(0, 300);
+    state.me.age = Number.isFinite(ageRaw) && ageRaw >= 13 && ageRaw <= 120 ? Math.floor(ageRaw) : null;
+    state.me.location = String(f.location.value).trim().slice(0, 60);
+    state.me.interests = interests;
+    state.me.avatar = chosen;
+    saveMe();
+    saveUsers();
+    msgEl.style.color = 'var(--ok)';
+    msgEl.textContent = 'Saved! ✓';
+    refreshAll();
+  });
+}
+
+/* ---------- Sync between tabs ---------- */
+
+window.addEventListener('storage', function (e) {
+  if (e.key === USERS_KEY || e.key === MSGS_KEY) refreshAll();
+  else if (e.key === PRESENCE_KEY) refreshPresence();
+});
+
+window.addEventListener('beforeunload', function () {
+  var p; try { p = JSON.parse(localStorage.getItem(PRESENCE_KEY)) || {}; } catch (err) { p = {}; }
+  if (state.me) delete p[state.me.username];
+  localStorage.setItem(PRESENCE_KEY, JSON.stringify(p));
+});
+
+setInterval(heartbeat, 4000);
+
+/* ---------- Boot ---------- */
+
+switchTab('login');
+var saved = localStorage.getItem(SESSION_KEY);
+if (saved) {
+  var existing = byUsername(saved);
+  if (existing) enterApp(existing);
+}
+})();
+</script>
+</body>
+</html>
